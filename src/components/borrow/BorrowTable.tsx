@@ -21,6 +21,10 @@ interface Borrow {
   borrow_date: string;
   return_date: string;
 }
+interface Book {
+  id: number;
+  title: string;
+}
 
 export default function BorrowTable() {
   const [borrow, setBorrow] = useState<Borrow[]>([]);
@@ -31,10 +35,29 @@ export default function BorrowTable() {
   const [selectedBorrow, setSelectedBorrow] = useState<Borrow | null>(null);
   const [showModal, setShowModal] = useState(false);
 
+  const [books, setBooks] = useState<Book[]>([]);
+
 
   const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
   
   const token = Cookies.get("token");
+
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/get-books`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        }
+        });
+        setBooks(response.data.data);
+      } catch (error) {
+        console.error("Error fetching books:", error);
+      }
+    };
+
+    fetchBooks();
+  }, []);
 
  
   useEffect(() => {
@@ -91,6 +114,11 @@ export default function BorrowTable() {
     try {
       if (selectedBorrow?.id) {
         await axios.put(`${API_URL}/borrows/${selectedBorrow.id}`, selectedBorrow, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        await axios.post(`${API_URL}/borrows/${selectedBorrow.id}/return`, selectedBorrow, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -231,11 +259,24 @@ export default function BorrowTable() {
      {showModal && (
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
         <div className="bg-white p-6 rounded shadow-lg w-96">
-          <h2 className="text-lg font-bold mb-4">{selectedBorrow?.id ? "Edit Book" : "Add Book"}</h2>
-          <input type="text" placeholder="Books" value={selectedBorrow?.books_id || ""} onChange={(e) => setSelectedBorrow({ ...selectedBorrow!, books_id: e.target.value })} className="w-full mb-2 p-2 border rounded" />
+          <h2 className="text-lg font-bold mb-4">{selectedBorrow?.id ? "Edit Borrow" : "Add Borrow"}</h2>
+          <select
+              value={selectedBorrow?.books_id || ""}
+              onChange={(e) =>
+                setSelectedBorrow({ ...selectedBorrow!, books_id: String(e.target.value) })
+              }
+              className="w-full mb-2 p-2 border rounded"
+            >
+              <option value="">Select Book</option>
+              {books.map((book) => (
+                <option key={book.id} value={book.id}>
+                  {book.title}
+                </option>
+              ))}
+            </select>
           <input type="text" placeholder="Borrow Name" value={selectedBorrow?.borrower_name || ""} onChange={(e) => setSelectedBorrow({ ...selectedBorrow!, borrower_name: e.target.value })} className="w-full mb-2 p-2 border rounded" />
-          <input type="text" placeholder="Borrow Date" value={selectedBorrow?.borrow_date || ""} onChange={(e) => setSelectedBorrow({ ...selectedBorrow!, borrow_date: e.target.value })} className="w-full mb-2 p-2 border rounded" />
-          <input type="text" placeholder="Return Date" value={selectedBorrow?.return_date || ""} onChange={(e) => setSelectedBorrow({ ...selectedBorrow!, return_date: e.target.value })} className="w-full mb-2 p-2 border rounded" />
+          <input type="date" placeholder="Borrow Date" value={selectedBorrow?.borrow_date || ""} onChange={(e) => setSelectedBorrow({ ...selectedBorrow!, borrow_date: e.target.value })} className="w-full mb-2 p-2 border rounded" />
+          <input type="date" placeholder="Return Date" value={selectedBorrow?.return_date || ""} onChange={(e) => setSelectedBorrow({ ...selectedBorrow!, return_date: e.target.value })} className="w-full mb-2 p-2 border rounded" />
           <div className="flex justify-end mt-4">
             <button className="bg-gray-500 text-white px-4 py-2 rounded mr-2" onClick={() => setShowModal(false)}>Cancel</button>
             <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={handleSave}>Save</button>
