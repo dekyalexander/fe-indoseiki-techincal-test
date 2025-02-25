@@ -14,6 +14,10 @@ import {
 
 import Cookies from "js-cookie";
 
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+
 interface Book {
   id?: number;
   title: string;
@@ -37,37 +41,38 @@ export default function BooksTable() {
   
   const token = Cookies.get("token");
 
- 
-  useEffect(() => {
-    const fetchBooks = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get(`${API_URL}/books`, {
-          params: { page, limit: 5, search: searchQuery },
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+  const fetchBooks = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/books`, {
+        params: { page, limit: 5, search: searchQuery },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-        console.log("API Response:", response.data); 
+      console.log("API Response:", response.data); 
 
-      if (Array.isArray(response.data)) {
-        setBooks(response.data); 
-        setTotalPages(1); 
-      } else if (response.data.data && Array.isArray(response.data.data)) {
-        setBooks(response.data.data);
-        setTotalPages(response.data.totalPages || 1);
-      } else {
-        console.error("Unexpected API response:", response.data);
-        setBooks([]); 
-      }
-    } catch (error) {
-      console.error("Error fetching books:", error);
+    if (Array.isArray(response.data)) {
+      setBooks(response.data); 
+      setTotalPages(1); 
+    } else if (response.data.data && Array.isArray(response.data.data)) {
+      setBooks(response.data.data);
+      setTotalPages(response.data.totalPages || 1);
+    } else {
+      console.error("Unexpected API response:", response.data);
       setBooks([]); 
     }
-      setLoading(false);
-    };
+  } catch (error) {
+    console.error("Error fetching books:", error);
+    setBooks([]); 
+  }
+    setLoading(false);
+  };
 
+ 
+  useEffect(() => {
+    
     fetchBooks();
   }, [page, searchQuery]);
 
@@ -82,8 +87,12 @@ export default function BooksTable() {
         });
   
         setBooks(books.filter((book) => book.id !== id));
+
+        fetchBooks();
+        toast.success("Book delete successfully!");
       } catch (error) {
         console.error("Error deleting book:", error);
+        toast.error("Failed to delete book. Please try again.");
       }
     }
   };
@@ -96,6 +105,7 @@ export default function BooksTable() {
             Authorization: `Bearer ${token}`,
           },
         });
+        toast.success("Book updated successfully!");
       } else {
         const response = await axios.post(`${API_URL}/books`, selectedBook, {
           headers: {
@@ -103,11 +113,14 @@ export default function BooksTable() {
           },
         });
         setBooks([...books, response.data]);
+        toast.success("Book added successfully!");
       }
+      fetchBooks();
       setShowModal(false);
       setSelectedBook(null);
     } catch (error) {
       console.error("Error saving book:", error);
+      toast.error("Failed to save book. Please try again.");
     }
   };
 
@@ -196,12 +209,12 @@ export default function BooksTable() {
                     </TableCell>
                     {/* Action Buttons */}
                     <TableCell className="px-4 py-3 flex gap-3">
-                      <button onClick={() => { setSelectedBook(book); setShowModal(true); }} className="text-blue-500 hover:text-blue-700">
+                      <button onClick={() => { setSelectedBook(book); setShowModal(true); }} className="text-blue-300 hover:text-blue-300mb-4 px-4 py-2 bg-blue-500 text-white rounded">
                         {/* <FiEdit size={18} /> */}
                         Edit
                       </button>
                       <button
-                        className="text-red-500 hover:text-red-700"
+                        className="text-red-300 hover:text-red-300mb-4 px-4 py-2 bg-red-500 text-white rounded"
                         onClick={() => handleDelete(book.id)}
                       >
                         {/* <FiTrash2 size={18} /> */}
@@ -242,10 +255,15 @@ export default function BooksTable() {
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
         <div className="bg-white p-6 rounded shadow-lg w-96">
           <h2 className="text-lg font-bold mb-4">{selectedBook?.id ? "Edit Book" : "Add Book"}</h2>
+          <label className="w-full mb-2 p-2">Title</label>
           <input type="text" placeholder="Title" value={selectedBook?.title || ""} onChange={(e) => setSelectedBook({ ...selectedBook!, title: e.target.value })} className="w-full mb-2 p-2 border rounded" />
+          <label className="w-full mb-2 p-2">Author</label>
           <input type="text" placeholder="Author" value={selectedBook?.author || ""} onChange={(e) => setSelectedBook({ ...selectedBook!, author: e.target.value })} className="w-full mb-2 p-2 border rounded" />
+          <label className="w-full mb-2 p-2">Description</label>
           <input type="text" placeholder="Description" value={selectedBook?.description || ""} onChange={(e) => setSelectedBook({ ...selectedBook!, description: e.target.value })} className="w-full mb-2 p-2 border rounded" />
+          <label className="w-full mb-2 p-2">Year</label>
           <input type="text" placeholder="Year" value={selectedBook?.year || ""} onChange={(e) => setSelectedBook({ ...selectedBook!, year: e.target.value })} className="w-full mb-2 p-2 border rounded" />
+          <label className="w-full mb-2 p-2">Stock</label>
           <input type="text" placeholder="Stock" value={selectedBook?.stock || ""} onChange={(e) => setSelectedBook({ ...selectedBook!, stock: e.target.value })} className="w-full mb-2 p-2 border rounded" />
           <div className="flex justify-end mt-4">
             <button className="bg-gray-500 text-white px-4 py-2 rounded mr-2" onClick={() => setShowModal(false)}>Cancel</button>

@@ -32,9 +32,9 @@ const navItems: NavItem[] = [
     subItems: [{ name: "Books", path: "/books", pro: false }],
   },
   {
-    name: "Borrow",
+    name: "Borrowing",
     icon: <TableIcon />,
-    subItems: [{ name: "Borrow", path: "/borrow", pro: false }],
+    subItems: [{ name: "Borrowing", path: "/borrow", pro: false },{ name: "Borrowing History", path: "/borrow-history", pro: false }],
   },
 ];
 

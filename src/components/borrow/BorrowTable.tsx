@@ -14,9 +14,13 @@ import {
 
 import Cookies from "js-cookie";
 
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 interface Borrow {
   id?: number;
   books_id: string;
+  title?: string;
   borrower_name: string;
   borrow_date: string;
   return_date: string;
@@ -42,6 +46,8 @@ export default function BorrowTable() {
   
   const token = Cookies.get("token");
 
+  // Fetching Data Books For Combobox
+
   useEffect(() => {
     const fetchBooks = async () => {
       try {
@@ -55,45 +61,45 @@ export default function BorrowTable() {
         console.error("Error fetching books:", error);
       }
     };
-
     fetchBooks();
   }, []);
 
- 
-  useEffect(() => {
-    const fetchBorrow = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get(`${API_URL}/borrows`, {
-          params: { page, limit: 5, search: searchQuery },
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+  // Fetching Data Borrow
 
-        console.log("API Response:", response.data); 
+  const fetchBorrow = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/borrows`, {
+        params: { page, limit: 5, search: searchQuery },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      if (Array.isArray(response.data)) {
-        setBorrow(response.data); 
-        setTotalPages(1); 
-      } else if (response.data.data && Array.isArray(response.data.data)) {
-        setBorrow(response.data.data);
-        setTotalPages(response.data.totalPages || 1);
-      } else {
-        console.error("Unexpected API response:", response.data);
-        setBorrow([]); 
-      }
-    } catch (error) {
-      console.error("Error fetching books:", error);
+      console.log("API Response:", response.data); 
+
+    if (Array.isArray(response.data)) {
+      setBorrow(response.data); 
+      setTotalPages(1); 
+    } else if (response.data.data && Array.isArray(response.data.data)) {
+      setBorrow(response.data.data);
+      setTotalPages(response.data.totalPages || 1);
+    } else {
+      console.error("Unexpected API response:", response.data);
       setBorrow([]); 
     }
-      setLoading(false);
-    };
+  } catch (error) {
+    console.error("Error fetching books:", error);
+    setBorrow([]); 
+  }
+    setLoading(false);
+  };
 
+  useEffect(() => {
     fetchBorrow();
   }, [page, searchQuery]);
 
-  // Fungsi untuk menghapus buku
+  // Fungsi untuk menghapus peminjaman
   const handleDelete = async (id: number | undefined) => {
     if (window.confirm("Are you sure you want to delete this borrow?") && id !== undefined) {
       try {
@@ -104,12 +110,16 @@ export default function BorrowTable() {
         });
   
         setBorrow(borrow.filter((borrow) =>borrow.id !== id));
+        fetchBorrow();
+        toast.success("Borrow delete successfully!");
       } catch (error) {
-        console.error("Error deleting book:", error);
+        console.error("Error deleting borrow:", error);
+        toast.error("Failed to borrow. Please try again.");
       }
     }
   };
 
+  // Fungsi untuk insert dan update peminjaman
   const handleSave = async () => {
     try {
       if (selectedBorrow?.id) {
@@ -118,11 +128,8 @@ export default function BorrowTable() {
             Authorization: `Bearer ${token}`,
           },
         });
-        await axios.post(`${API_URL}/borrows/${selectedBorrow.id}/return`, selectedBorrow, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        
+        toast.success("Borrow updated successfully!");
       } else {
         const response = await axios.post(`${API_URL}/borrows`, selectedBorrow, {
           headers: {
@@ -131,10 +138,33 @@ export default function BorrowTable() {
         });
         setBorrow([...borrow, response.data]);
       }
+      fetchBorrow();
       setShowModal(false);
       setSelectedBorrow(null);
     } catch (error) {
       console.error("Error saving borrow:", error);
+      toast.error("Failed to save borrow. Please try again.");
+    }
+  };
+
+
+  // Fungsi untuk mengembalikan buku
+  const handleReturnBooks = async (id: number | undefined) => {
+    if (window.confirm("Are you sure you want to return books this borrow?") && id !== undefined) {
+      try {
+        await axios.post(`${API_URL}/borrows/${id}/return`, {}, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+  
+        setBorrow(borrow.filter((borrow) =>borrow.id !== id));
+        fetchBorrow();
+        toast.success("Return Books successfully!");
+      } catch (error) {
+        console.error("Error Return Books:", error);
+        toast.error("Failed to Return Books. Please try again.");
+      }
     }
   };
 
@@ -200,7 +230,7 @@ export default function BorrowTable() {
                 {borrow.map((borrow, index) => (
                   <TableRow key={borrow.id ?? `book-${index}`}>
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                    {borrow.books_id}
+                    {borrow.title}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                       {borrow.borrower_name}
@@ -210,20 +240,27 @@ export default function BorrowTable() {
                     </TableCell>
                     
                     <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                      {borrow.borrow_date}
+                      {borrow.return_date}
                     </TableCell>
                     {/* Action Buttons */}
                     <TableCell className="px-4 py-3 flex gap-3">
-                      <button onClick={() => { setSelectedBorrow(borrow); setShowModal(true); }} className="text-blue-500 hover:text-blue-700">
-                        {/* <FiEdit size={18} /> */}
+                      <button onClick={() => { setSelectedBorrow(borrow); setShowModal(true); }} className="text-blue-300 hover:text-blue-300mb-4 px-4 py-2 bg-blue-500 text-white rounded">
+                        
                         Edit
                       </button>
                       <button
-                        className="text-red-500 hover:text-red-700"
+                        className="text-red-300 hover:text-red-300mb-4 px-4 py-2 bg-red-500 text-white rounded"
                         onClick={() => handleDelete(borrow.id)}
                       >
-                        {/* <FiTrash2 size={18} /> */}
+                        
                         Delete
+                      </button>
+                      <button
+                        className="text-success-300 hover:text-success-300mb-4 px-4 py-2 bg-success-500 text-white rounded"
+                        onClick={() => handleReturnBooks(borrow.id)}
+                      >
+                        
+                        Return Books
                       </button>
                     </TableCell>
                   </TableRow>
@@ -260,6 +297,7 @@ export default function BorrowTable() {
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
         <div className="bg-white p-6 rounded shadow-lg w-96">
           <h2 className="text-lg font-bold mb-4">{selectedBorrow?.id ? "Edit Borrow" : "Add Borrow"}</h2>
+          <label className="w-full mb-2 p-2">Books</label>
           <select
               value={selectedBorrow?.books_id || ""}
               onChange={(e) =>
@@ -274,9 +312,10 @@ export default function BorrowTable() {
                 </option>
               ))}
             </select>
-          <input type="text" placeholder="Borrow Name" value={selectedBorrow?.borrower_name || ""} onChange={(e) => setSelectedBorrow({ ...selectedBorrow!, borrower_name: e.target.value })} className="w-full mb-2 p-2 border rounded" />
+            <label className="w-full mb-2 p-2">Borrower Name</label>
+          <input type="text" placeholder="Borrower Name" value={selectedBorrow?.borrower_name || ""} onChange={(e) => setSelectedBorrow({ ...selectedBorrow!, borrower_name: e.target.value })} className="w-full mb-2 p-2 border rounded" />
+          <label className="w-full mb-2 p-2">Borrow Date</label>
           <input type="date" placeholder="Borrow Date" value={selectedBorrow?.borrow_date || ""} onChange={(e) => setSelectedBorrow({ ...selectedBorrow!, borrow_date: e.target.value })} className="w-full mb-2 p-2 border rounded" />
-          <input type="date" placeholder="Return Date" value={selectedBorrow?.return_date || ""} onChange={(e) => setSelectedBorrow({ ...selectedBorrow!, return_date: e.target.value })} className="w-full mb-2 p-2 border rounded" />
           <div className="flex justify-end mt-4">
             <button className="bg-gray-500 text-white px-4 py-2 rounded mr-2" onClick={() => setShowModal(false)}>Cancel</button>
             <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={handleSave}>Save</button>
